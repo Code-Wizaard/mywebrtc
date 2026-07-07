@@ -1,45 +1,131 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>پیام‌رسان E2EE امن</title>
   <style>
-    * { font-family: Tahoma, Arial, sans-serif; box-sizing: border-box; }
+    * {
+      font-family: Tahoma, Arial, sans-serif;
+      box-sizing: border-box;
+    }
+
     body {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      margin: 0; padding: 20px; min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
     }
+
     .container {
-      max-width: 820px; margin: 0 auto; background: white;
-      border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
+      max-width: 820px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
     }
-    header { background: #4c51bf; color: white; padding: 20px; text-align: center; }
-    .main { padding: 20px; }
+
+    header {
+      background: #4c51bf;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .main {
+      padding: 20px;
+    }
+
     button {
-      padding: 12px 20px; background: #4c51bf; color: white;
-      border: none; border-radius: 8px; cursor: pointer; margin: 5px 0; width: 100%;
+      padding: 12px 20px;
+      background: #4c51bf;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px 0;
+      width: 100%;
     }
-    button:hover { background: #434190; }
+
+    button:hover {
+      background: #434190;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     textarea {
-      width: 100%; padding: 12px; border: 2px solid #e2e8f0;
-      border-radius: 8px; font-family: monospace; font-size: 14px; min-height: 130px;
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      min-height: 130px;
     }
+
     #chat {
-      height: 420px; overflow-y: auto; border: 2px solid #e2e8f0;
-      border-radius: 12px; padding: 15px; background: #f8fafc; margin: 15px 0;
+      height: 420px;
+      overflow-y: auto;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 15px;
+      background: #f8fafc;
+      margin: 15px 0;
     }
-    .msg { margin: 10px 0; padding: 12px 16px; border-radius: 12px; max-width: 80%; }
-    .me { background: #c6f6d5; margin-left: auto; }
-    .them { background: #e2e8f0; margin-right: auto; }
-    .status { padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: bold; }
-    .success { background: #c6f6d5; }
-    .error { background: #fee2e2; color: #b91c1c; }
+
+    .msg {
+      margin: 10px 0;
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+
+    .me {
+      background: #c6f6d5;
+      margin-left: auto;
+    }
+
+    .them {
+      background: #e2e8f0;
+      margin-right: auto;
+    }
+
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-weight: bold;
+      background: #e2e8f0;
+    }
+
+    .success {
+      background: #c6f6d5;
+      color: #065f46;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <header><h1>🔒 پیام‌رسان E2EE امن</h1></header>
+    <header>
+      <h1>🔒 پیام‌رسان E2EE امن</h1>
+    </header>
     <div class="main">
       <button onclick="createOffer()">۱. ایجاد Offer جدید</button>
       <button onclick="showOffer()">۲. نمایش Offer برای کپی</button>
@@ -53,12 +139,15 @@
       <button onclick="setRemoteAnswer()">۴. تنظیم Answer</button>
 
       <div id="status" class="status">آماده اتصال...</div>
-      <div id="copyArea" style="display:none; background:#f1f5f9; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:13px; margin:10px 0; max-height:280px; overflow:auto;"></div>
+      <div id="copyArea"
+        style="display:none; background:#f1f5f9; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:13px; margin:10px 0; max-height:280px; overflow:auto;">
+      </div>
 
       <div id="chat"></div>
 
       <div style="display:flex; gap:10px;">
-        <input id="message" placeholder="پیام خود را بنویسید..." style="flex:1; padding:12px;" onkeypress="if(event.key==='Enter') sendMessage()">
+        <input id="message" placeholder="پیام خود را بنویسید..." style="flex:1; padding:12px;"
+          onkeypress="if(event.key==='Enter') sendMessage()">
         <button onclick="sendMessage()">ارسال</button>
       </div>
     </div>
@@ -69,133 +158,250 @@
     let dataChannel = null;
     let sharedKey = null;
     let myPrivateKey = null;
+    let myPublicKeyRaw = null;
+    let isInitiator = false;
 
     async function generateMyKeys() {
-      const keyPair = await crypto.subtle.generateKey(
-        { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
-      );
-      myPrivateKey = keyPair.privateKey;
-      return await crypto.subtle.exportKey("raw", keyPair.publicKey);
+      try {
+        const keyPair = await crypto.subtle.generateKey(
+          { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
+        );
+        myPrivateKey = keyPair.privateKey;
+        myPublicKeyRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+        return myPublicKeyRaw;
+      } catch (error) {
+        console.error("Error generating keys:", error);
+        throw error;
+      }
     }
 
     async function deriveSharedKey(theirPublicKeyRaw) {
-      const theirPublicKey = await crypto.subtle.importKey(
-        "raw", theirPublicKeyRaw, { name: "ECDH", namedCurve: "P-256" }, true, []
-      );
-      sharedKey = await crypto.subtle.deriveKey(
-        { name: "ECDH", public: theirPublicKey },
-        myPrivateKey,
-        { name: "AES-GCM", length: 256 },
-        true,
-        ["encrypt", "decrypt"]
-      );
+      try {
+        const theirPublicKey = await crypto.subtle.importKey(
+          "raw", theirPublicKeyRaw, { name: "ECDH", namedCurve: "P-256" }, true, []
+        );
+        sharedKey = await crypto.subtle.deriveKey(
+          { name: "ECDH", public: theirPublicKey },
+          myPrivateKey,
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        );
+        return true;
+      } catch (error) {
+        console.error("Error deriving shared key:", error);
+        throw error;
+      }
     }
 
     async function encryptMessage(message) {
       if (!sharedKey) throw new Error("کلید مشترک هنوز ساخته نشده");
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ciphertext = await crypto.subtle.encrypt(
-        { name: "AES-GCM", iv }, sharedKey, new TextEncoder().encode(message)
-      );
-      return { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) };
+      try {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(message);
+        const ciphertext = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: iv },
+          sharedKey,
+          encoded
+        );
+        return {
+          iv: Array.from(iv),
+          data: Array.from(new Uint8Array(ciphertext))
+        };
+      } catch (error) {
+        console.error("Error encrypting message:", error);
+        throw error;
+      }
     }
 
     async function decryptMessage(enc) {
       if (!sharedKey) throw new Error("کلید مشترک آماده نیست");
-      const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: new Uint8Array(enc.iv) },
-        sharedKey,
-        new Uint8Array(enc.data)
-      );
-      return new TextDecoder().decode(decrypted);
+      try {
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: new Uint8Array(enc.iv) },
+          sharedKey,
+          new Uint8Array(enc.data)
+        );
+        return new TextDecoder().decode(decrypted);
+      } catch (error) {
+        console.error("Error decrypting message:", error);
+        throw error;
+      }
+    }
+
+    async function sendPublicKey() {
+      if (!dataChannel || dataChannel.readyState !== "open") {
+        console.error("Data channel not ready");
+        return false;
+      }
+      try {
+        await generateMyKeys();
+        dataChannel.send(JSON.stringify({
+          type: "pubkey",
+          key: Array.from(myPublicKeyRaw)
+        }));
+        updateStatus("🔑 کلید عمومی ارسال شد", "info");
+        return true;
+      } catch (error) {
+        console.error("Error sending public key:", error);
+        return false;
+      }
     }
 
     function setupDataChannel() {
+      if (!dataChannel) return;
+
       dataChannel.onopen = async () => {
-        document.getElementById("status").textContent = "🔄 در حال ارسال کلید عمومی...";
-        try {
-          const myPubRaw = await generateMyKeys();
-          dataChannel.send(JSON.stringify({ type: "pubkey", key: Array.from(myPubRaw) }));
-        } catch (e) {
-          console.error(e);
-        }
+        updateStatus("📡 کانال داده باز شد، در حال ارسال کلید عمومی...", "info");
+        await sendPublicKey();
       };
 
       dataChannel.onmessage = async (e) => {
         try {
           const data = JSON.parse(e.data);
+
           if (data.type === "pubkey") {
-            await deriveSharedKey(new Uint8Array(data.key));
-            document.getElementById("status").innerHTML = "✅ کلید مشترک ساخته شد!<br>حالا می‌توانید پیام امن بفرستید.";
-            document.getElementById("status").classList.add("success");
-          } else if (data.iv) {
+            const theirKey = new Uint8Array(data.key);
+            await deriveSharedKey(theirKey);
+            updateStatus("✅ کلید مشترک ساخته شد! حالا می‌توانید پیام امن بفرستید.", "success");
+
+            // If we didn't send our key yet, send it now
+            if (!sharedKey) {
+              await sendPublicKey();
+            }
+          } else if (data.iv && data.data) {
+            // Received encrypted message
             const text = await decryptMessage(data);
             addMessage(text, false);
+          } else if (data.type === "text") {
+            // For backward compatibility
+            addMessage(data.text, false);
           }
         } catch (err) {
-          console.error(err);
+          console.error("Error processing message:", err);
+          updateStatus("❌ خطا در پردازش پیام: " + err.message, "error");
         }
+      };
+
+      dataChannel.onerror = (error) => {
+        console.error("Data channel error:", error);
+        updateStatus("❌ خطا در کانال داده", "error");
+      };
+
+      dataChannel.onclose = () => {
+        updateStatus("🔴 کانال داده بسته شد", "error");
       };
     }
 
-    async function createOffer() {
-      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-      dataChannel = pc.createDataChannel("chat");
-      setupDataChannel();
+    function updateStatus(message, type = "info") {
+      const status = document.getElementById("status");
+      status.textContent = message;
+      status.className = `status ${type}`;
+    }
 
-      await generateMyKeys();
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      document.getElementById("status").textContent = "Offer آماده شد. روی دکمه ۲ کلیک کنید.";
+    async function createOffer() {
+      try {
+        updateStatus("🔄 در حال ساخت Offer...", "info");
+
+        pc = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+
+        dataChannel = pc.createDataChannel("chat");
+        isInitiator = true;
+        setupDataChannel();
+
+        // Generate keys immediately
+        await generateMyKeys();
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        updateStatus("✅ Offer آماده شد. روی دکمه ۲ کلیک کنید.", "success");
+      } catch (error) {
+        console.error("Error creating offer:", error);
+        updateStatus("❌ خطا در ساخت Offer: " + error.message, "error");
+      }
     }
 
     function showOffer() {
-      if (!pc?.localDescription) return alert("ابتدا Offer بسازید!");
+      if (!pc?.localDescription) {
+        alert("ابتدا Offer بسازید!");
+        return;
+      }
       const area = document.getElementById("copyArea");
       area.style.display = "block";
       area.textContent = JSON.stringify(pc.localDescription, null, 2);
+      updateStatus("📋 Offer برای کپی آماده است", "info");
     }
 
     async function setRemoteOffer() {
       const input = document.getElementById("remoteOffer").value.trim();
-      if (!input) return alert("Offer را paste کنید!");
+      if (!input) {
+        alert("Offer را paste کنید!");
+        return;
+      }
 
       try {
+        updateStatus("🔄 در حال پردازش Offer...", "info");
+
         const clean = input.replace(/[\n\r\t]+/g, " ").trim();
         const offer = JSON.parse(clean);
 
-        pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+        pc = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        });
+        isInitiator = false;
+
         pc.ondatachannel = (e) => {
           dataChannel = e.channel;
           setupDataChannel();
         };
 
+        // Generate keys
         await generateMyKeys();
         await pc.setRemoteDescription(offer);
+
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        document.getElementById("status").textContent = "Answer ساخته شد. روی نمایش Answer کلیک کنید.";
+        updateStatus("✅ Answer ساخته شد. روی نمایش Answer کلیک کنید.", "success");
         showAnswer();
       } catch (e) {
+        console.error("Error setting remote offer:", e);
+        updateStatus("❌ خطا: " + e.message, "error");
         alert("خطا: " + e.message);
       }
     }
 
     function showAnswer() {
-      if (!pc?.localDescription) return;
+      if (!pc?.localDescription) {
+        alert("ابتدا Answer بسازید!");
+        return;
+      }
       const area = document.getElementById("copyArea");
       area.style.display = "block";
       area.textContent = JSON.stringify(pc.localDescription, null, 2);
+      updateStatus("📋 Answer برای کپی آماده است", "info");
     }
 
     async function setRemoteAnswer() {
       const input = document.getElementById("remoteAnswer").value.trim();
-      if (!input) return alert("Answer را paste کنید!");
+      if (!input) {
+        alert("Answer را paste کنید!");
+        return;
+      }
+
       try {
+        updateStatus("🔄 در حال تنظیم Answer...", "info");
+
         const clean = input.replace(/[\n\r\t]+/g, " ").trim();
         await pc.setRemoteDescription(JSON.parse(clean));
+
+        updateStatus("✅ Answer تنظیم شد. منتظر دریافت کلید عمومی...", "info");
       } catch (e) {
+        console.error("Error setting remote answer:", e);
+        updateStatus("❌ خطا: " + e.message, "error");
         alert("خطا: " + e.message);
       }
     }
@@ -203,15 +409,26 @@
     async function sendMessage() {
       const input = document.getElementById("message");
       const msg = input.value.trim();
-      if (!msg || !dataChannel || dataChannel.readyState !== "open") {
-        return alert("اتصال هنوز آماده ارسال پیام نیست!");
+
+      if (!msg) return;
+
+      if (!dataChannel || dataChannel.readyState !== "open") {
+        alert("اتصال هنوز آماده ارسال پیام نیست!");
+        return;
       }
+
+      if (!sharedKey) {
+        alert("کلید مشترک هنوز ساخته نشده! منتظر دریافت کلید عمومی طرف مقابل باشید.");
+        return;
+      }
+
       try {
         const encrypted = await encryptMessage(msg);
         dataChannel.send(JSON.stringify(encrypted));
         addMessage(msg, true);
         input.value = "";
       } catch (err) {
+        console.error("Error sending message:", err);
         alert("خطا در ارسال: " + err.message);
       }
     }
@@ -220,10 +437,18 @@
       const chat = document.getElementById("chat");
       const div = document.createElement("div");
       div.className = `msg ${isMe ? 'me' : 'them'}`;
-      div.textContent = text;
+
+      // Add timestamp
+      const timestamp = new Date().toLocaleTimeString('fa-IR');
+      div.textContent = `${text}`;
+
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
+
+    // Initialize
+    console.log("E2EE Messenger initialized");
   </script>
 </body>
+
 </html>
