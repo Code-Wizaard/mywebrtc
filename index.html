@@ -118,6 +118,35 @@
       background: #dbeafe;
       color: #1e40af;
     }
+
+    .warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+
+    .step {
+      flex: 1;
+      text-align: center;
+      padding: 5px;
+    }
+
+    .step.active {
+      color: #4c51bf;
+      font-weight: bold;
+    }
+
+    .step.done {
+      color: #065f46;
+    }
   </style>
 </head>
 
@@ -127,6 +156,13 @@
       <h1>🔒 پیام‌رسان E2EE امن</h1>
     </header>
     <div class="main">
+      <div class="step-indicator">
+        <div class="step" id="step1">۱. Offer</div>
+        <div class="step" id="step2">۲. Answer</div>
+        <div class="step" id="step3">۳. کلید</div>
+        <div class="step" id="step4">۴. پیام</div>
+      </div>
+
       <button onclick="createOffer()">۱. ایجاد Offer جدید</button>
       <button onclick="showOffer()">۲. نمایش Offer برای کپی</button>
 
@@ -148,7 +184,7 @@
       <div style="display:flex; gap:10px;">
         <input id="message" placeholder="پیام خود را بنویسید..." style="flex:1; padding:12px;"
           onkeypress="if(event.key==='Enter') sendMessage()">
-        <button onclick="sendMessage()">ارسال</button>
+        <button onclick="sendMessage()" id="sendBtn">ارسال</button>
       </div>
     </div>
   </div>
@@ -160,6 +196,26 @@
     let myPrivateKey = null;
     let myPublicKeyRaw = null;
     let isInitiator = false;
+    let keyExchangeComplete = false;
+
+    // Helper functions for base64 encoding/decoding
+    function arrayBufferToBase64(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
 
     async function generateMyKeys() {
       try {
@@ -167,7 +223,9 @@
           { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
         );
         myPrivateKey = keyPair.privateKey;
-        myPublicKeyRaw = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+        const publicKeyBuffer = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+        myPublicKeyRaw = new Uint8Array(publicKeyBuffer);
+        console.log("Keys generated successfully. Public key length:", myPublicKeyRaw.length);
         return myPublicKeyRaw;
       } catch (error) {
         console.error("Error generating keys:", error);
@@ -175,11 +233,37 @@
       }
     }
 
-    async function deriveSharedKey(theirPublicKeyRaw) {
+    async function deriveSharedKey(theirPublicKeyData) {
       try {
+        // Ensure we have a proper Uint8Array
+        let theirPublicKeyRaw;
+        if (theirPublicKeyData instanceof Uint8Array) {
+          theirPublicKeyRaw = theirPublicKeyData;
+        } else if (Array.isArray(theirPublicKeyData)) {
+          theirPublicKeyRaw = new Uint8Array(theirPublicKeyData);
+        } else if (typeof theirPublicKeyData === 'string') {
+          // If it's a base64 string
+          const buffer = base64ToArrayBuffer(theirPublicKeyData);
+          theirPublicKeyRaw = new Uint8Array(buffer);
+        } else {
+          throw new Error("Invalid public key format");
+        }
+
+        // Validate key length (P-256 public keys are 65 bytes)
+        if (theirPublicKeyRaw.length !== 65) {
+          throw new Error(`Invalid public key length: ${theirPublicKeyRaw.length}. Expected 65 bytes.`);
+        }
+
+        console.log("Importing public key of length:", theirPublicKeyRaw.length);
+
         const theirPublicKey = await crypto.subtle.importKey(
-          "raw", theirPublicKeyRaw, { name: "ECDH", namedCurve: "P-256" }, true, []
+          "raw",
+          theirPublicKeyRaw,
+          { name: "ECDH", namedCurve: "P-256" },
+          true,
+          []
         );
+
         sharedKey = await crypto.subtle.deriveKey(
           { name: "ECDH", public: theirPublicKey },
           myPrivateKey,
@@ -187,6 +271,10 @@
           true,
           ["encrypt", "decrypt"]
         );
+
+        keyExchangeComplete = true;
+        updateStatus("✅ کلید مشترک ساخته شد! حالا می‌توانید پیام امن بفرستید.", "success");
+        updateStep(4);
         return true;
       } catch (error) {
         console.error("Error deriving shared key:", error);
@@ -217,10 +305,13 @@
     async function decryptMessage(enc) {
       if (!sharedKey) throw new Error("کلید مشترک آماده نیست");
       try {
+        const iv = new Uint8Array(enc.iv);
+        const data = new Uint8Array(enc.data);
+
         const decrypted = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: new Uint8Array(enc.iv) },
+          { name: "AES-GCM", iv: iv },
           sharedKey,
-          new Uint8Array(enc.data)
+          data
         );
         return new TextDecoder().decode(decrypted);
       } catch (error) {
@@ -235,15 +326,24 @@
         return false;
       }
       try {
-        await generateMyKeys();
-        dataChannel.send(JSON.stringify({
+        if (!myPublicKeyRaw) {
+          await generateMyKeys();
+        }
+
+        // Send as base64 to avoid any data corruption
+        const base64Key = arrayBufferToBase64(myPublicKeyRaw);
+        const message = JSON.stringify({
           type: "pubkey",
-          key: Array.from(myPublicKeyRaw)
-        }));
+          key: base64Key
+        });
+
+        dataChannel.send(message);
+        console.log("Public key sent successfully");
         updateStatus("🔑 کلید عمومی ارسال شد", "info");
         return true;
       } catch (error) {
         console.error("Error sending public key:", error);
+        updateStatus("❌ خطا در ارسال کلید: " + error.message, "error");
         return false;
       }
     }
@@ -252,30 +352,40 @@
       if (!dataChannel) return;
 
       dataChannel.onopen = async () => {
+        console.log("Data channel opened");
         updateStatus("📡 کانال داده باز شد، در حال ارسال کلید عمومی...", "info");
+        updateStep(3);
         await sendPublicKey();
       };
 
       dataChannel.onmessage = async (e) => {
         try {
+          console.log("Received message from data channel");
           const data = JSON.parse(e.data);
 
           if (data.type === "pubkey") {
-            const theirKey = new Uint8Array(data.key);
-            await deriveSharedKey(theirKey);
-            updateStatus("✅ کلید مشترک ساخته شد! حالا می‌توانید پیام امن بفرستید.", "success");
+            console.log("Received public key from peer");
 
-            // If we didn't send our key yet, send it now
-            if (!sharedKey) {
+            // If we haven't sent our key yet, send it now
+            if (!myPublicKeyRaw) {
+              await generateMyKeys();
+            }
+
+            // Derive shared key from their public key
+            await deriveSharedKey(data.key);
+
+            // Send our public key if we haven't already
+            if (!keyExchangeComplete) {
               await sendPublicKey();
             }
+
           } else if (data.iv && data.data) {
             // Received encrypted message
+            console.log("Received encrypted message");
             const text = await decryptMessage(data);
             addMessage(text, false);
-          } else if (data.type === "text") {
-            // For backward compatibility
-            addMessage(data.text, false);
+          } else {
+            console.log("Unknown message type:", data);
           }
         } catch (err) {
           console.error("Error processing message:", err);
@@ -289,6 +399,7 @@
       };
 
       dataChannel.onclose = () => {
+        console.log("Data channel closed");
         updateStatus("🔴 کانال داده بسته شد", "error");
       };
     }
@@ -299,9 +410,21 @@
       status.className = `status ${type}`;
     }
 
+    function updateStep(step) {
+      for (let i = 1; i <= 4; i++) {
+        const element = document.getElementById(`step${i}`);
+        if (element) {
+          element.className = 'step';
+          if (i < step) element.classList.add('done');
+          if (i === step) element.classList.add('active');
+        }
+      }
+    }
+
     async function createOffer() {
       try {
         updateStatus("🔄 در حال ساخت Offer...", "info");
+        updateStep(1);
 
         pc = new RTCPeerConnection({
           iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -313,11 +436,13 @@
 
         // Generate keys immediately
         await generateMyKeys();
+        console.log("Keys generated for offer");
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
         updateStatus("✅ Offer آماده شد. روی دکمه ۲ کلیک کنید.", "success");
+        updateStep(2);
       } catch (error) {
         console.error("Error creating offer:", error);
         updateStatus("❌ خطا در ساخت Offer: " + error.message, "error");
@@ -333,6 +458,11 @@
       area.style.display = "block";
       area.textContent = JSON.stringify(pc.localDescription, null, 2);
       updateStatus("📋 Offer برای کپی آماده است", "info");
+
+      // Auto-select the text
+      area.select();
+      document.execCommand('copy');
+      updateStatus("📋 Offer کپی شد!", "success");
     }
 
     async function setRemoteOffer() {
@@ -354,6 +484,7 @@
         isInitiator = false;
 
         pc.ondatachannel = (e) => {
+          console.log("Data channel received from peer");
           dataChannel = e.channel;
           setupDataChannel();
         };
@@ -366,6 +497,7 @@
         await pc.setLocalDescription(answer);
 
         updateStatus("✅ Answer ساخته شد. روی نمایش Answer کلیک کنید.", "success");
+        updateStep(2);
         showAnswer();
       } catch (e) {
         console.error("Error setting remote offer:", e);
@@ -383,6 +515,11 @@
       area.style.display = "block";
       area.textContent = JSON.stringify(pc.localDescription, null, 2);
       updateStatus("📋 Answer برای کپی آماده است", "info");
+
+      // Auto-select the text
+      area.select();
+      document.execCommand('copy');
+      updateStatus("📋 Answer کپی شد!", "success");
     }
 
     async function setRemoteAnswer() {
@@ -399,6 +536,7 @@
         await pc.setRemoteDescription(JSON.parse(clean));
 
         updateStatus("✅ Answer تنظیم شد. منتظر دریافت کلید عمومی...", "info");
+        updateStep(3);
       } catch (e) {
         console.error("Error setting remote answer:", e);
         updateStatus("❌ خطا: " + e.message, "error");
@@ -437,17 +575,14 @@
       const chat = document.getElementById("chat");
       const div = document.createElement("div");
       div.className = `msg ${isMe ? 'me' : 'them'}`;
-
-      // Add timestamp
-      const timestamp = new Date().toLocaleTimeString('fa-IR');
-      div.textContent = `${text}`;
-
+      div.textContent = text;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
     // Initialize
     console.log("E2EE Messenger initialized");
+    updateStep(1);
   </script>
 </body>
 
