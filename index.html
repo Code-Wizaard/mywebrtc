@@ -248,32 +248,34 @@
         <div class="step" id="step4">۴. پیام</div>
       </div>
 
-      <section>
-        <h3>طرف اول (کسی که اتصال را شروع می‌کند)</h3>
-        <button onclick="createOffer()">۱. ایجاد Offer جدید</button>
-        <button id="showOfferBtn" onclick="showOffer()" disabled>۲. نمایش Offer برای کپی</button>
-        <small class="hint">دکمهٔ نمایش Offer تا زمانی که جمع‌آوری ICE candidates تمام نشود غیرفعال است — همین‌جا بود که
-          نسخه‌های قبلی خراب می‌شدند.</small>
-      </section>
+      <div id="signalingArea">
+        <section>
+          <h3>طرف اول (کسی که اتصال را شروع می‌کند)</h3>
+          <button onclick="createOffer()">۱. ایجاد Offer جدید</button>
+          <button id="showOfferBtn" onclick="showOffer()" disabled>۲. نمایش Offer برای کپی</button>
+          <small class="hint">دکمهٔ نمایش Offer تا زمانی که جمع‌آوری ICE candidates تمام نشود غیرفعال است — همین‌جا بود
+            که نسخه‌های قبلی خراب می‌شدند.</small>
+        </section>
 
-      <section>
-        <h3>طرف دوم (کسی که Offer را دریافت می‌کند)</h3>
-        <h4 style="margin:0 0 6px; font-size:13px;">Offer طرف مقابل را اینجا paste کنید:</h4>
-        <textarea id="remoteOffer" placeholder="Offer کامل را paste کنید"></textarea>
-        <button onclick="setRemoteOffer()">۳. تنظیم Offer و ساخت Answer</button>
-      </section>
+        <section>
+          <h3>طرف دوم (کسی که Offer را دریافت می‌کند)</h3>
+          <h4 style="margin:0 0 6px; font-size:13px;">Offer طرف مقابل را اینجا paste کنید:</h4>
+          <textarea id="remoteOffer" placeholder="Offer کامل را paste کنید"></textarea>
+          <button onclick="setRemoteOffer()">۳. تنظیم Offer و ساخت Answer</button>
+        </section>
 
-      <section>
-        <h3>بازگشت به طرف اول</h3>
-        <h4 style="margin:0 0 6px; font-size:13px;">Answer طرف مقابل را اینجا paste کنید:</h4>
-        <textarea id="remoteAnswer" placeholder="Answer را paste کنید"></textarea>
-        <button onclick="setRemoteAnswer()">۴. تنظیم Answer</button>
-      </section>
+        <section>
+          <h3>بازگشت به طرف اول</h3>
+          <h4 style="margin:0 0 6px; font-size:13px;">Answer طرف مقابل را اینجا paste کنید:</h4>
+          <textarea id="remoteAnswer" placeholder="Answer را paste کنید"></textarea>
+          <button onclick="setRemoteAnswer()">۴. تنظیم Answer</button>
+        </section>
+
+        <div id="copyArea"></div>
+        <button id="copyBtn" class="copy-btn" style="display:none;" onclick="copyToClipboard()">📋 کپی متن</button>
+      </div>
 
       <div id="status" class="status">آماده اتصال...</div>
-
-      <div id="copyArea"></div>
-      <button id="copyBtn" class="copy-btn" style="display:none;" onclick="copyToClipboard()">📋 کپی متن</button>
 
       <div id="chat"></div>
 
@@ -419,6 +421,7 @@
         if (pc.connectionState === 'connected') {
           badge.style.background = '#c6f6d5';
           badge.style.color = '#065f46';
+          hideSignalingArea();
         } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
           badge.style.background = '#fee2e2';
           badge.style.color = '#b91c1c';
@@ -448,11 +451,12 @@
 
           if (data.type === "pubkey") {
             if (!myPublicKeyRaw) await generateMyKeys();
+            // Note: we do NOT resend our own public key here. Both sides
+            // already send their key once, in dataChannel.onopen. Resending
+            // it here just overwrote the "success" status message right
+            // after it was set, making it look like the exchange never
+            // finished even though it had.
             await deriveSharedKey(data.key);
-            if (!keyExchangeComplete) {
-              // deriveSharedKey already set it true, but ensure our key was sent too
-            }
-            await sendPublicKey();
           } else if (data.iv && data.data) {
             const text = await decryptMessage(data);
             addMessage(text, false);
@@ -471,6 +475,11 @@
       dataChannel.onclose = () => {
         updateStatus("🔴 کانال داده بسته شد", "error");
       };
+    }
+
+    function hideSignalingArea() {
+      const area = document.getElementById("signalingArea");
+      if (area) area.style.display = "none";
     }
 
     function updateStatus(message, type = "info") {
