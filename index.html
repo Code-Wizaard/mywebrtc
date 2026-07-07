@@ -70,7 +70,7 @@
     let sharedKey = null;
     let myPrivateKey = null;
 
-    async function generateKeys() {
+    async function generateMyKeys() {
       const keyPair = await crypto.subtle.generateKey(
         { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
       );
@@ -112,22 +112,28 @@
 
     function setupDataChannel() {
       dataChannel.onopen = async () => {
-        document.getElementById("status").textContent = "🔄 مبادله کلید...";
-        const myPubRaw = await crypto.subtle.exportKey("raw", (await generateKeys()));
-        dataChannel.send(JSON.stringify({ type: "pubkey", key: Array.from(myPubRaw) }));
+        document.getElementById("status").textContent = "🔄 در حال ارسال کلید عمومی...";
+        try {
+          const myPubRaw = await generateMyKeys();
+          dataChannel.send(JSON.stringify({ type: "pubkey", key: Array.from(myPubRaw) }));
+        } catch (e) {
+          console.error(e);
+        }
       };
 
       dataChannel.onmessage = async (e) => {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "pubkey") {
-          await deriveSharedKey(new Uint8Array(msg.key));
-          document.getElementById("status").innerHTML = "✅ کلید مشترک ساخته شد!<br>چت امن فعال است.";
-          document.getElementById("status").classList.add("success");
-        } else if (msg.iv) {
-          try {
-            const text = await decryptMessage(msg);
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "pubkey") {
+            await deriveSharedKey(new Uint8Array(data.key));
+            document.getElementById("status").innerHTML = "✅ کلید مشترک ساخته شد!<br>حالا می‌توانید پیام امن بفرستید.";
+            document.getElementById("status").classList.add("success");
+          } else if (data.iv) {
+            const text = await decryptMessage(data);
             addMessage(text, false);
-          } catch (err) { console.error(err); }
+          }
+        } catch (err) {
+          console.error(err);
         }
       };
     }
@@ -137,10 +143,10 @@
       dataChannel = pc.createDataChannel("chat");
       setupDataChannel();
 
-      await generateKeys();
+      await generateMyKeys();
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      document.getElementById("status").textContent = "Offer ساخته شد → روی دکمه ۲ کلیک کنید";
+      document.getElementById("status").textContent = "Offer آماده شد. روی دکمه ۲ کلیک کنید.";
     }
 
     function showOffer() {
@@ -164,12 +170,12 @@
           setupDataChannel();
         };
 
-        await generateKeys();
+        await generateMyKeys();
         await pc.setRemoteDescription(offer);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        document.getElementById("status").textContent = "Answer ساخته شد → نمایش Answer را بزن";
+        document.getElementById("status").textContent = "Answer ساخته شد. روی نمایش Answer کلیک کنید.";
         showAnswer();
       } catch (e) {
         alert("خطا: " + e.message);
@@ -190,7 +196,7 @@
         const clean = input.replace(/[\n\r\t]+/g, " ").trim();
         await pc.setRemoteDescription(JSON.parse(clean));
       } catch (e) {
-        alert("خطا در Answer: " + e.message);
+        alert("خطا: " + e.message);
       }
     }
 
@@ -198,7 +204,7 @@
       const input = document.getElementById("message");
       const msg = input.value.trim();
       if (!msg || !dataChannel || dataChannel.readyState !== "open") {
-        return alert("اتصال هنوز کامل نشده!");
+        return alert("اتصال هنوز آماده ارسال پیام نیست!");
       }
       try {
         const encrypted = await encryptMessage(msg);
@@ -206,7 +212,7 @@
         addMessage(msg, true);
         input.value = "";
       } catch (err) {
-        alert("خطا: " + err.message);
+        alert("خطا در ارسال: " + err.message);
       }
     }
 
