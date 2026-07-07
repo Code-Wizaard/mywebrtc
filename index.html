@@ -147,6 +147,29 @@
     .step.done {
       color: #065f46;
     }
+
+    #copyArea {
+      background: #f1f5f9;
+      padding: 12px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 10px 0;
+      max-height: 280px;
+      overflow: auto;
+      border: 2px solid #e2e8f0;
+      display: none;
+    }
+
+    .copy-btn {
+      background: #10b981 !important;
+      margin-top: 5px !important;
+    }
+
+    .copy-btn:hover {
+      background: #059669 !important;
+    }
   </style>
 </head>
 
@@ -175,9 +198,9 @@
       <button onclick="setRemoteAnswer()">۴. تنظیم Answer</button>
 
       <div id="status" class="status">آماده اتصال...</div>
-      <div id="copyArea"
-        style="display:none; background:#f1f5f9; padding:12px; border-radius:8px; white-space:pre-wrap; font-family:monospace; font-size:13px; margin:10px 0; max-height:280px; overflow:auto;">
-      </div>
+
+      <div id="copyArea"></div>
+      <button id="copyBtn" class="copy-btn" style="display:none;" onclick="copyToClipboard()">📋 کپی متن</button>
 
       <div id="chat"></div>
 
@@ -197,6 +220,7 @@
     let myPublicKeyRaw = null;
     let isInitiator = false;
     let keyExchangeComplete = false;
+    let currentCopyText = '';
 
     // Helper functions for base64 encoding/decoding
     function arrayBufferToBase64(buffer) {
@@ -209,12 +233,17 @@
     }
 
     function base64ToArrayBuffer(base64) {
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
+      try {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      } catch (error) {
+        console.error("Error decoding base64:", error);
+        throw new Error("Invalid base64 string");
       }
-      return bytes.buffer;
     }
 
     async function generateMyKeys() {
@@ -421,6 +450,56 @@
       }
     }
 
+    function displayCopyText(text) {
+      const area = document.getElementById("copyArea");
+      const btn = document.getElementById("copyBtn");
+      currentCopyText = text;
+      area.textContent = text;
+      area.style.display = "block";
+      btn.style.display = "block";
+    }
+
+    function copyToClipboard() {
+      if (!currentCopyText) {
+        alert("متن برای کپی وجود ندارد!");
+        return;
+      }
+
+      // Use the modern clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentCopyText)
+          .then(() => {
+            updateStatus("✅ متن با موفقیت کپی شد!", "success");
+          })
+          .catch(err => {
+            console.error("Clipboard write failed:", err);
+            // Fallback
+            fallbackCopy(currentCopyText);
+          });
+      } else {
+        // Fallback for older browsers
+        fallbackCopy(currentCopyText);
+      }
+    }
+
+    function fallbackCopy(text) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        updateStatus("✅ متن با موفقیت کپی شد!", "success");
+      } catch (err) {
+        console.error("Fallback copy failed:", err);
+        updateStatus("❌ خطا در کپی: " + err.message, "error");
+      }
+    }
+
     async function createOffer() {
       try {
         updateStatus("🔄 در حال ساخت Offer...", "info");
@@ -454,15 +533,9 @@
         alert("ابتدا Offer بسازید!");
         return;
       }
-      const area = document.getElementById("copyArea");
-      area.style.display = "block";
-      area.textContent = JSON.stringify(pc.localDescription, null, 2);
+      const text = JSON.stringify(pc.localDescription, null, 2);
+      displayCopyText(text);
       updateStatus("📋 Offer برای کپی آماده است", "info");
-
-      // Auto-select the text
-      area.select();
-      document.execCommand('copy');
-      updateStatus("📋 Offer کپی شد!", "success");
     }
 
     async function setRemoteOffer() {
@@ -511,15 +584,9 @@
         alert("ابتدا Answer بسازید!");
         return;
       }
-      const area = document.getElementById("copyArea");
-      area.style.display = "block";
-      area.textContent = JSON.stringify(pc.localDescription, null, 2);
+      const text = JSON.stringify(pc.localDescription, null, 2);
+      displayCopyText(text);
       updateStatus("📋 Answer برای کپی آماده است", "info");
-
-      // Auto-select the text
-      area.select();
-      document.execCommand('copy');
-      updateStatus("📋 Answer کپی شد!", "success");
     }
 
     async function setRemoteAnswer() {
